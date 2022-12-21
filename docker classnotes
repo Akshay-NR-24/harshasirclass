@@ -358,10 +358,123 @@ IQ: What is the difference b/w CMD and ENTRYPOINT ?
 		
 	MAINTAINER
 	     used to provide the author name metadata.
+	
+	Docker volume 
+	Bind mount 
+		- we mount a host location (file/directory) inside a container location 	
+			docker -v <host_path>:<container_path>
+		- The changes made in host will retain in container and also changes made inside container in this 
+		  location will retain in host 
+		- If container is deleted host directory will not be deleted (data persistence).
+		- It is not preferrable to mount a single directory to multiple container. (multiple containers processes 
+		  may try write the data to same file which is not possible)
 
+	Volumes 
+		- The are docker managed filesystem and we use docker commands to manage these volumes.
+		- Volumes are easier to manage, backup and migrate than bind mounts.
+		- We can use different source filesystem called storage drivers (EBS, EFS, s3) 
+		- Default location of docker volume is /var/lib/docker/volumes/<volume_name>
+		To create a docker volume 
+			docker 	volume create <volume_name>	
 
-Publish 
+		To delete volume 
+			docker volume rm <volume_name>
+
+		To mount a volume 
+			docker -v <volume_name>:<container_path>
+
+		Docker volume with efs driver 
+			docker volume create \
+    				--driver local \
+    				--opt type=nfs \
+    				--opt o=addr=fs-03bc6dc9ceb082421.efs.ap-south-1.amazonaws.com,rw,nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 \
+    				--opt device=:/ efs 
+
+Docker networking 
+   Publish 
+	Publish will bind the container application port to the host machine port so that 
+	we can access from out side world with host machine port.
+
+	Publish = port mapping of container to host machine + Expose 
+	
+	To publish a port 		
+		docker run -p <host_port>:<container_port>
+	
+	To publish all the exposed ports 
+		docker run -P 
+		-P publish_all, It binds all the exposed ports of container to host machine. 
+	
+	To map direct IP address to the host 
+		port to port 
+			docker run -p <ip>:<host_port>:<container_port>	
+		Any to port 
+			docker run -p <ip>::<container_port>	
+	
+	Range of ports 
+		many to many 
+			docker run -p 8080-8085:8086-8090
+			Note: The total number of host ports in range should be same as container port range
+		many to one
+			docker run -p 8080-8090:8080
+			This will map to any one of the host port which is free
+
+Assignment: Try docker mounts and volumes.
+	    Use EFS/s3 as the docker volume 	
+	
+    Docker network type (Bridge, none, host)
+	1. Bridge 
+		- This is a private internal network created by docker on the host machine 
+		  by name docker0	
+		- This is the default network type for all the container which are created 
+          without any network configurations.
+		- By default all the containers in the same bridge can communicate with 
+		  each other without any extra configuration.	
+		- We cannot use container name for communication only IP address is allowed in 
+		  default bridge.
+
+		Custom bridge 
+			To create bridge network 
+				docker network create --driver bridge my_bride 
 			
-	docker run -it -d --rm --name -p 8080:8090
+			- In custom bridge containers can communicate with eachother with container 
+			  name and also with IP address.
+	
+
+		Example: 
+			
+			bridge      ap1 - 172.17.0.2  ap2 - 172.17.0.3
+			my_bridge   ap3 - 172.18.0.2  ap4 - 172.18.0.3    
+
+			Check Ping
+    				1) Check can we ping by the name 
+        				
+    
+    				2) Check bridge to bridge communication 
+        				ap1 -> ap3 or ap4 
+
+	2. Host 		  
+		- This driver removes the network isolation between docker and the host.
+		- The containers are directly connected to host machine network without  
+		  extra layer of any docker network.
+		- Shares the same TCP.IP stack and same namespace of host machine.  
+		- All the network interfaces which are there in host machine are 
+		  accessible by this container.
+
+	3. None 
+		- Containers are not attached to any network by docker.
+		- All the required network configurations need to be done 
+		  manually.
+		- The host or any other containers won't be able to communicate 
+		  with this container until a custom network is configured.
+
+	Overlay 
+		- Overlay networks are meant to define network communication of containers hosted on different host machines. 
+		- To create such a network we use the ‘overlay’ driver. 
+		- The overlay driver is a native driver by docker that helps to create a single layer2 broadcast domain across containers 
+		  hosted on multiple Docker host machines. 
+
+	Assignment: Connect 2 bridge networks 
+			docker network connect 
+
 
 	
